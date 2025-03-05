@@ -3,108 +3,74 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Details</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css">
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <title>Uniform Request</title>
     <style>
-        .container {
-            max-width: 800px;
-            margin-top: 20px;
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            text-align: center;
+            padding: 20px;
         }
-        .save-btn {
-            position: absolute;
-            top: 10px;
-            right: 10px;
+        h2 {
+            color: #333;
+        }
+        .list-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 60vh;
+        }
+        input {
+            width: 280px;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 2px solid #007BFF;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        select {
+            width: 300px;
+            height: 250px;
+            font-size: 16px;
+            padding: 10px;
+            border: 2px solid #007BFF;
+            border-radius: 5px;
+            background-color: white;
+            color: #333;
+        }
+        select option {
+            padding: 10px;
         }
     </style>
-</head>
-<body>
-    <div class="container">
-        <h2 class="text-center">Uniform for Miguel Rojas</h2>
-        <button id="saveBtn" class="btn btn-success save-btn">Save</button>
-        <table class="table table-bordered mt-3">
-            <thead>
-                <tr>
-                    <th>Field</th>
-                    <th>Value</th>
-                    <th>Status</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>Miguel Rojas</td>
-                    <td><input type="text" value="Miguel Rojas" class="form-control"></td>
-                    <td></td>
-                </tr>
-                <tr>
-                    <td>Small</td>
-                    <td><input type="text" value="Small" class="form-control"></td>
-                    <td>
-                        <select class="form-select status">
-                            <option value="Pending">Pending</option>
-                            <option value="Delivered">Delivered</option>
-                        </select>
-                    </td>
-                </tr>
-                <tr>
-                    <td>Small</td>
-                    <td><input type="text" value="Small" class="form-control"></td>
-                    <td>
-                        <select class="form-select status">
-                            <option value="Pending">Pending</option>
-                            <option value="Delivered">Delivered</option>
-                        </select>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
-        <div class="text-center mt-3">
-            <h3>Deduction</h3>
-            <p><strong>Total hours owed: <span id="totalHours">0</span> Hrs</strong></p>
-        </div>
-    </div>
-    
     <script>
-        function calculateDeduction() {
-            let total = 0;
-            $(".status").each(function() {
-                if ($(this).val() === "Delivered") {
-                    total += 1;
-                }
-            });
-            $("#totalHours").text(total);
+        function filterNames() {
+            let input = document.getElementById("search").value.toLowerCase();
+            let options = document.getElementById("nameList").options;
+            
+            for (let i = 0; i < options.length; i++) {
+                let txt = options[i].text.toLowerCase();
+                options[i].style.display = txt.includes(input) ? "block" : "none";
+            }
         }
         
-        $(document).on("change", ".status", function() {
-            calculateDeduction();
-        });
-        
-        $("#saveBtn").on("click", function() {
-            let data = [];
-            $("tbody tr").each(function() {
-                let field = $(this).find("td:first").text();
-                let value = $(this).find("input").val();
-                let status = $(this).find(".status").val();
-                data.push({ field, value, status });
-            });
-            
-            $.ajax({
-                url: "/update",
-                type: "POST",
-                contentType: "application/json",
-                data: JSON.stringify({ records: data }),
-                success: function(response) {
-                    alert("Changes saved successfully!");
-                },
-                error: function() {
-                    alert("Error saving changes.");
-                }
-            });
-        });
-        
-        $(document).ready(function() {
-            calculateDeduction();
-        });
+        function showDetails() {
+            let selectedName = document.getElementById("nameList").value;
+            if (selectedName) {
+                window.open("/details?name=" + encodeURIComponent(selectedName), "_blank", "width=500,height=400");
+            }
+        }
     </script>
+</head>
+<body>
+    <h2>Uniform Request</h2>
+    <div class="list-container">
+        <input type="text" id="search" onkeyup="filterNames()" placeholder="Search names...">
+        <select id="nameList" size="10" ondblclick="showDetails()">
+            {% for name in names %}
+                <option value="{{ name }}">{{ name }}</option>
+            {% endfor %}
+        </select>
+    </div>
 </body>
 </html>
