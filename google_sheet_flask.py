@@ -6,45 +6,66 @@ import os
 
 app = Flask(__name__)
 
-# Cargar credenciales desde la variable de entorno
-service_account_info = json.loads(os.getenv("GOOGLE_CREDENTIALS", "{}"))
-creds = ServiceAccountCredentials.from_json_keyfile_dict(service_account_info, [
-    "https://spreadsheets.google.com/feeds",
-    "https://www.googleapis.com/auth/drive"
-])
-client = gspread.authorize(creds)
+# 🟢 1. Cargar credenciales de la variable de entorno
+try:
+    service_account_info = json.loads(os.getenv("GOOGLE_CREDENTIALS", "{}"))
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(service_account_info, [
+        "https://spreadsheets.google.com/feeds",
+        "https://www.googleapis.com/auth/drive"
+    ])
+    client = gspread.authorize(creds)
+    print("✅ Conexión exitosa con Google Sheets")
+except Exception as e:
+    print("❌ ERROR al cargar credenciales:", e)
+    exit(1)  # Detener ejecución si no hay credenciales válidas
 
-# ID de la hoja de cálculo
+# 🟢 2. Acceder a la hoja de cálculo
 SHEET_ID = "1zzVvvvZzo3Jp_WGwf-aQP_P8bBHluXX5e2Wssvd0XVg"
+try:
+    sheet = client.open_by_key(SHEET_ID).sheet1
+    print("✅ Hoja de cálculo cargada correctamente")
+except Exception as e:
+    print("❌ ERROR al abrir la hoja de cálculo:", e)
+    exit(1)
 
-# Abrir la hoja
-sheet = client.open_by_key(SHEET_ID).sheet1
+# 🟢 3. Función para obtener datos de Google Sheets
+def get_google_sheet_data():
+    try:
+        data = sheet.get_all_values()
+        if not data:
+            return [], []
+        
+        headers = data[0]  # Primera fila como encabezados
+        records = data[1:]  # Datos desde la segunda fila
+
+        return headers, records
+    except Exception as e:
+        print("❌ ERROR al obtener datos de Google Sheets:", e)
+        return [], []
 
 @app.route("/")
 def home():
-    names = [row[1] for row in sheet.get_all_values()[1:] if len(row) > 1]
+    _, records = get_google_sheet_data()
+    names = [row[1] for row in records if len(row) > 1]  # Columna B (índice 1)
     return render_template("index.html", names=names)
 
 @app.route("/details", methods=["GET", "POST"])
 def details():
     name = request.args.get("name", "")
-    all_records = sheet.get_all_values()
-    headers = all_records[0]  # Encabezados
-    records = all_records[1:]  # Datos
+    headers, records = get_google_sheet_data()
 
     person_data = None
     row_index = None
-    for index, row in enumerate(records, start=2):  # Comenzar desde la fila 2
-        if len(row) > 1 and row[1] == name:  # La columna B tiene los nombres
+    for index, row in enumerate(records, start=2):  # Empieza en fila 2
+        if len(row) > 1 and row[1] == name:
             person_data = row
             row_index = index
             break
 
     if not person_data:
-        return "<h2>No se encontraron datos para esta persona.</h2>"
+        return "<h2>No data found for this person.</h2>"
 
-    # Limitar a columnas B-K
-    headers_filtered = headers[1:11]
+    headers_filtered = headers[1:11]  # Mostrar solo columnas B-K
     person_data_filtered = person_data[1:11]
 
     zipped_data = list(enumerate(zip(headers_filtered, person_data_filtered)))
@@ -53,13 +74,19 @@ def details():
 
 @app.route("/update", methods=["POST"])
 def update():
-    row_index = request.form["row_index"]
-    updated_data = [request.form[f"data_{i}"] for i in range(10)]  # Extraer datos
+    try:
+        row_index = request.form["row_index"]
+        updated_data = [request.form[f"data_{i}"] for i in range(10)]
 
-    # Escribir en Google Sheets
-    sheet.update(f"B{row_index}:K{row_index}", [updated_data])
+        # Escribir en Google Sheets
+        sheet.update(f"B{row_index}:K{row_index}", [updated_data])
+        print(f"✅ Datos actualizados en fila {row_index}: {updated_data}")
 
-    return "Success", 200
+    except Exception as e:
+        print(f"❌ ERROR al actualizar Google Sheets en fila {row_index}: {e}")
+        return "<h2>Error al actualizar la hoja de cálculo.</h2>"
+
+    return redirect(url_for("home"))
 
 if __name__ == "__main__":
     app.run(debug=True)
