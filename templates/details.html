@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Details - {{ name }}</title>
+    <title>Uniform for {{ name }}</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -12,42 +12,89 @@
             padding: 20px;
         }
         h2 {
-            color: #333;
+            color: #007BFF;
         }
-        form {
+        .container {
+            background-color: white;
+            width: 50%;
+            margin: auto;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+        }
+        th {
+            background-color: #007BFF;
+            color: white;
+        }
+        select, input[type='number'], input[type='checkbox'] {
+            padding: 5px;
+            border-radius: 5px;
+        }
+        .controls {
+            margin-top: 10px;
             display: flex;
-            flex-direction: column;
+            justify-content: center;
             align-items: center;
             gap: 10px;
         }
-        input {
-            width: 250px;
-            padding: 8px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
+        .controls input {
+            width: 80px;
         }
-        button {
+        .save-button {
             background-color: #28a745;
             color: white;
             border: none;
-            padding: 10px 15px;
+            padding: 10px 20px;
+            font-size: 16px;
             cursor: pointer;
             border-radius: 5px;
+            margin-top: 20px;
         }
-        button:hover {
+        .save-button:hover {
             background-color: #218838;
         }
     </style>
 </head>
 <body>
-    <h2>Details for {{ name }}</h2>
-    <form action="{{ url_for('update') }}" method="POST">
-        <input type="hidden" name="row_index" value="{{ row_index }}">
-        {% for i, (header, value) in zipped_data %}
-            <label>{{ header }}</label>
-            <input type="text" name="data_{{ i }}" value="{{ value }}">
-        {% endfor %}
-        <button type="submit">Save</button>
-    </form>
+    <div class="container">
+        <h2>Uniform for {{ name }}</h2>
+        <form id="updateForm" action="/update" method="POST">
+            <input type="hidden" name="row_index" value="{{ row_index }}">
+            <table>
+                <tr>
+                    <th>Field</th>
+                    <th>Value</th>
+                    <th>Status</th>
+                </tr>
+                {% for index, (header, value) in zipped_data %}
+                    <tr>
+                        <td><strong>{{ header }}</strong></td>
+                        <td>
+                            <input type="text" name="data_{{ index }}" value="{{ value }}">
+                        </td>
+                        <td>
+                            <select class="status">
+                                <option value="Pending">Pending</option>
+                                <option value="Delivered">Delivered</option>
+                                <option value="Cancel">Cancel</option>
+                                <option value="Out Stock">Out Stock</option>
+                            </select>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </table>
+            <button type="submit" class="save-button">Save</button>
+        </form>
+    </div>
 </body>
 </html>
