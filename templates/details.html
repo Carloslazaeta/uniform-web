@@ -1,192 +1,135 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Uniform for {{ name }}</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f4f4;
-            text-align: center;
-            padding: 20px;
-        }
-        h2 {
-            color: #007BFF;
-        }
-        .container {
-            background-color: white;
-            width: 50%;
-            margin: auto;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-        }
-        th, td {
-            border: 1px solid #ddd;
-            padding: 10px;
-            text-align: left;
-        }
-        th {
-            background-color: #007BFF;
-            color: white;
-        }
-        select, input[type='number'], input[type='checkbox'] {
-            padding: 5px;
-            border-radius: 5px;
-        }
-        .deduction-section {
-            margin-top: 30px;
-            padding: 20px;
-            background-color: #fff;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-        }
-        .deduction-table {
-            width: 100%;
-            margin-top: 10px;
-            border-collapse: collapse;
-        }
-        .deduction-table th, .deduction-table td {
-            border: 1px solid #ddd;
-            padding: 10px;
-            text-align: center;
-        }
-        .controls {
-            margin-top: 10px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 10px;
-        }
-        .controls input {
-            width: 80px;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h2>Uniform for {{ name }}</h2>
-        <table>
-            <tr>
-                <th>Field</th>
-                <th>Value</th>
-                <th>Status</th>
-            </tr>
-            {% for index, (header, value) in zipped_data %}
-                <tr>
-                    <td><strong>{{ header }}</strong></td>
-                    <td>{{ value }}</td>
-                    <td>
-                        {% if index != 0 and index != zipped_data|length - 1 %}
-                            <select class="status" onchange="calculateTotalHours()">
-                                <option value="Pending">Pending</option>
-                                <option value="Delivered">Delivered</option>
-                                <option value="Cancel">Cancel</option>
-                                <option value="Out Stock">Out Stock</option>
-                            </select>
-                        {% endif %}
-                    </td>
-                </tr>
-            {% endfor %}
-        </table>
-    </div>
+from flask import Flask, render_template, request, redirect, url_for
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
+import json
+import os
+import requests
+from datetime import datetime
 
-    <div class="deduction-section">
-        <h2>Deduction</h2>
-        <div class="total-section">Total hours owed: <span id="total-hours">0 Hrs</span></div>
-        <div class="controls">
-            <input type="number" id="deduct-hours" min="0" step="1">
-            <button onclick="addDeduction()">Deduct</button>
-        </div>
-        <br>
-        <label>
-            <input type="checkbox" id="old-employee" onchange="toggleOldEmployee()"> Old Employee
-        </label>
-        <h3>Deduction History</h3>
-        <table class="deduction-table">
-            <tr>
-                <th>Date</th>
-                <th>Hours Deducted</th>
-                <th>Remaining Hours</th>
-                <th>Actions</th>
-            </tr>
-            <tbody id="deduction-history">
-            </tbody>
-        </table>
-    </div>
+app = Flask(__name__)
 
-    <script>
-        const itemHours = {
-            "Quick dry prime blue active polo": 3,
-            "Amazon Hat": 2,
-            "Rain jacket": 4,
-            "Short Sleeve Polo": 3,
-            "Amazon Vest": 2,
-            "Amazon Pants": 3,
-            "Amazon short pants": 3,
-            "Lightweight Ha": 2
-        };
+# Cargar credenciales desde la variable de entorno
+service_account_info = json.loads(os.getenv("GOOGLE_CREDENTIALS", "{}"))
 
-        function calculateTotalHours() {
-            let totalHours = 0;
-            document.querySelectorAll(".container table tr").forEach(row => {
-                let item = row.cells[0]?.innerText.trim();
-                let statusElement = row.querySelector(".status");
-                if (statusElement?.value === "Delivered" && itemHours[item] !== undefined) {
-                    totalHours += itemHours[item];
-                }
-            });
-            document.getElementById("total-hours").innerText = `${totalHours} Hrs`;
-        }
+try:
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(service_account_info, [
+        "https://spreadsheets.google.com/feeds",
+        "https://www.googleapis.com/auth/drive"
+    ])
+    client = gspread.authorize(creds)
+    print("✅ Conexión con Google Sheets establecida correctamente.")
+except Exception as e:
+    print(f"❌ Error en la autenticación con Google Sheets: {e}")
 
-        function toggleOldEmployee() {
-            let checkbox = document.getElementById("old-employee");
-            if (checkbox.checked) {
-                document.getElementById("total-hours").innerText = "0 Hrs";
-            } else {
-                calculateTotalHours();
-            }
-        }
+# ID de la hoja de cálculo
+SHEET_ID = "1zzVvvvZzo3Jp_WGwf-aQP_P8bBHluXX5e2Wssvd0XVg"
+GID = "945204493"
+URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:json&gid={GID}"
 
-        function addDeduction() {
-            let deductHours = parseInt(document.getElementById("deduct-hours").value) || 0;
-            let totalHoursElem = document.getElementById("total-hours");
-            let currentHours = parseInt(totalHoursElem.innerText.replace(" Hrs", "")) || 0;
+# Abrir la hoja principal
+sheet = client.open_by_key(SHEET_ID).sheet1
 
-            if (deductHours > currentHours) {
-                alert("Cannot deduct more hours than available.");
-                return;
-            }
+# Verificar si la hoja "Backup" ya existe, si no, crearla
+try:
+    backup_sheet = client.open_by_key(SHEET_ID).worksheet("Backup")
+    print("✅ Hoja de Backup encontrada.")
+except gspread.exceptions.WorksheetNotFound:
+    backup_sheet = client.open_by_key(SHEET_ID).add_worksheet(title="Backup", rows="100", cols="10")
+    print("✅ Hoja de Backup creada.")
 
-            let remainingHours = currentHours - deductHours;
-            totalHoursElem.innerText = `${remainingHours} Hrs`;
+def get_google_sheet_data():
+    """Obtiene los datos de Google Sheets."""
+    try:
+        response = requests.get(URL)
+        if response.status_code != 200:
+            print("❌ Error: No se pudo obtener datos de Google Sheets.")
+            return [], []
 
-            let table = document.getElementById("deduction-history");
-            let newRow = table.insertRow();
-            newRow.innerHTML = `<td>${new Date().toLocaleDateString()}</td>
-                                <td>${deductHours} Hrs</td>
-                                <td>${remainingHours} Hrs</td>
-                                <td><button onclick="editDeduction(this)">Edit</button></td>`;
-        }
+        text = response.text[47:-2]  # Limpiar el JSON devuelto por Google Sheets
+        data = json.loads(text)
 
-        function editDeduction(button) {
-            let row = button.parentElement.parentElement;
-            let deductedCell = row.cells[1];
-            let deductedHours = parseInt(deductedCell.innerText.replace(" Hrs", "")) || 0;
-            let newHours = prompt("Enter new deducted hours:", deductedHours);
-            if (newHours !== null && !isNaN(newHours)) {
-                deductedCell.innerText = `${newHours} Hrs`;
-                calculateTotalHours();
-            }
-        }
+        if "table" not in data or "rows" not in data["table"]:
+            print("❌ Error: Formato inesperado en la respuesta de Google Sheets.")
+            return [], []
 
-        document.addEventListener("DOMContentLoaded", calculateTotalHours);
-    </script>
-</body>
-</html>
+        rows = data["table"]["rows"]
+
+        # Extraer encabezados
+        headers = [col["label"] for col in data["table"]["cols"] if "label" in col]
+
+        # Extraer todas las filas
+        records = []
+        for row in rows[1:]:  # Ignorar la primera fila (encabezados)
+            records.append([cell["v"] if cell else "" for cell in row["c"]])
+
+        return headers, records
+    except Exception as e:
+        print(f"❌ Error inesperado: {e}")
+        return [], []
+
+@app.route("/")
+def home():
+    """Página principal que muestra la lista de nombres."""
+    names = [row[1] for row in get_google_sheet_data()[1] if len(row) > 1]
+    return render_template("index.html", names=names)
+
+@app.route("/details", methods=["GET", "POST"])
+def details():
+    """Página de detalles de un empleado."""
+    name = request.args.get("name", "")
+    headers, records = get_google_sheet_data()
+
+    # Buscar la fila correspondiente al nombre seleccionado
+    person_data = None
+    row_index = None
+    for index, row in enumerate(records, start=2):  # Empezar desde la fila 2 en Sheets
+        if len(row) > 1 and row[1] == name:  # Columna B contiene los nombres
+            person_data = row
+            row_index = index
+            break
+
+    if not person_data:
+        return "<h2>No data found for this person.</h2>"
+
+    # Mostrar solo columnas B a K (índices 1 a 10)
+    headers_filtered = headers[1:11]
+    person_data_filtered = person_data[1:11]
+
+    zipped_data = list(enumerate(zip(headers_filtered, person_data_filtered)))
+
+    return render_template("details.html", headers=headers_filtered, data=person_data_filtered, zipped_data=zipped_data, name=name, row_index=row_index)
+
+@app.route("/update", methods=["POST"])
+def update():
+    """Actualiza la información de un empleado en Google Sheets."""
+    row_index = request.form["row_index"]  # Fila a actualizar en Google Sheets
+    updated_data = [request.form[f"data_{i}"] for i in range(10)]  # Extraer datos del formulario
+
+    # Escribir en Google Sheets
+    sheet.update(f"B{row_index}:K{row_index}", [updated_data])
+
+    return redirect(url_for("home"))
+
+@app.route("/backup", methods=["POST"])
+def backup():
+    """Guarda los datos actuales en la hoja de Backup."""
+    try:
+        headers, records = get_google_sheet_data()
+        
+        if not records:
+            return "<h2>No hay datos para respaldar.</h2>"
+
+        # Limpiar hoja de backup antes de guardar
+        backup_sheet.clear()
+
+        # Guardar encabezados y datos en la hoja de Backup
+        backup_sheet.append_row(headers)
+        for row in records:
+            backup_sheet.append_row(row)
+
+        return "<h2>Backup guardado exitosamente.</h2><br><a href='/'>Volver</a>"
+    except Exception as e:
+        return f"<h2>Error al guardar backup: {e}</h2>"
+
+if __name__ == "__main__":
+    app.run(debug=True)
