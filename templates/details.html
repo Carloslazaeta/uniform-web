@@ -4,31 +4,36 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Details</title>
+    <script>
+        async function saveData() {
+            let formData = new FormData(document.getElementById("updateForm"));
+            const response = await fetch("/update", {
+                method: "POST",
+                body: formData
+            });
+            if (response.ok) {
+                alert("Datos guardados correctamente");
+            } else {
+                alert("Error al guardar los datos");
+            }
+        }
+
+        function autoSave() {
+            clearTimeout(window.saveTimeout);
+            window.saveTimeout = setTimeout(saveData, 2000);  // Guarda después de 2 segundos
+        }
+    </script>
 </head>
 <body>
-    <h1>Details for {{ name }}</h1>
-    <form method="POST" action="{{ url_for('update') }}">
+    <h1>Details of {{ name }}</h1>
+    <form id="updateForm" method="POST" action="/update">
         <input type="hidden" name="row_index" value="{{ row_index }}">
-        <table border="1">
-            <tr>
-                <th>Field</th>
-                <th>Value</th>
-            </tr>
-            {% for index, (header, value) in zipped_data %}
-            <tr>
-                <td>{{ header }}</td>
-                <td><input type="text" name="data_{{ index }}" value="{{ value }}"></td>
-            </tr>
-            {% endfor %}
-        </table>
-        <button type="submit">Save Changes</button>
+        {% for index, (header, value) in zipped_data %}
+            <label>{{ header }}:</label>
+            <input type="text" name="data_{{ index }}" value="{{ value }}" oninput="autoSave()">
+            <br>
+        {% endfor %}
+        <button type="button" onclick="saveData()">Guardar</button>
     </form>
-    
-    <!-- Botón para guardar backup -->
-    <form method="POST" action="{{ url_for('backup') }}">
-        <button type="submit">Save Backup</button>
-    </form>
-
-    <a href="{{ url_for('home') }}">Back</a>
 </body>
 </html>

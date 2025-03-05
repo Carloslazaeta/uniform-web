@@ -3,74 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Uniform Request</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f4f4;
-            text-align: center;
-            padding: 20px;
-        }
-        h2 {
-            color: #333;
-        }
-        .list-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 60vh;
-        }
-        input {
-            width: 280px;
-            padding: 10px;
-            margin-bottom: 10px;
-            border: 2px solid #007BFF;
-            border-radius: 5px;
-            font-size: 16px;
-        }
-        select {
-            width: 300px;
-            height: 250px;
-            font-size: 16px;
-            padding: 10px;
-            border: 2px solid #007BFF;
-            border-radius: 5px;
-            background-color: white;
-            color: #333;
-        }
-        select option {
-            padding: 10px;
-        }
-    </style>
-    <script>
-        function filterNames() {
-            let input = document.getElementById("search").value.toLowerCase();
-            let options = document.getElementById("nameList").options;
-            
-            for (let i = 0; i < options.length; i++) {
-                let txt = options[i].text.toLowerCase();
-                options[i].style.display = txt.includes(input) ? "block" : "none";
-            }
-        }
-        
-        function showDetails() {
-            let selectedName = document.getElementById("nameList").value;
-            if (selectedName) {
-                window.open("/details?name=" + encodeURIComponent(selectedName), "_blank", "width=500,height=400");
-            }
-        }
-    </script>
+    <title>Employee List</title>
 </head>
 <body>
-    <h2>Uniform Request</h2>
-    <div class="list-container">
-        <input type="text" id="search" onkeyup="filterNames()" placeholder="Search names...">
-        <select id="nameList" size="10" ondblclick="showDetails()">
-            {% for name in names %}
-                <option value="{{ name }}">{{ name }}</option>
-            {% endfor %}
-        </select>
-    </div>
+    <h1>Employee List</h1>
+    <ul>
+        {% for name in names %}
+            <li><a href="{{ url_for('details', name=name) }}">{{ name }}</a></li>
+        {% endfor %}
+    </ul>
 </body>
 </html>
