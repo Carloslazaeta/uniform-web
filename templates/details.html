@@ -3,154 +3,108 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Uniform for {{ name }}</title>
+    <title>Details</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f4f4;
-            text-align: center;
-            padding: 20px;
-        }
-        h2 {
-            color: #007BFF;
-        }
         .container {
-            background-color: white;
-            width: 50%;
-            margin: auto;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            position: relative;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
+            max-width: 800px;
             margin-top: 20px;
         }
-        th, td {
-            border: 1px solid #ddd;
-            padding: 10px;
-            text-align: left;
-        }
-        th {
-            background-color: #007BFF;
-            color: white;
-        }
-        select, input {
-            padding: 5px;
-            border-radius: 5px;
-            width: 100%;
-        }
-        .deduction-section {
-            margin-top: 30px;
-            padding: 20px;
-            background-color: #fff;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-        }
-        .total-section {
-            font-size: 18px;
-            font-weight: bold;
-            margin-bottom: 10px;
-        }
-        /* Botón Save */
-        .save-button {
+        .save-btn {
             position: absolute;
             top: 10px;
             right: 10px;
-            background-color: #28a745;
-            color: white;
-            border: none;
-            padding: 10px 15px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 14px;
-        }
-        .save-button:hover {
-            background-color: #218838;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h2>Uniform for {{ name }}</h2>
-        <button class="save-button" onclick="saveChanges()">Save</button>
-        <form id="updateForm">
-            <table>
+        <h2 class="text-center">Uniform for Miguel Rojas</h2>
+        <button id="saveBtn" class="btn btn-success save-btn">Save</button>
+        <table class="table table-bordered mt-3">
+            <thead>
                 <tr>
                     <th>Field</th>
                     <th>Value</th>
                     <th>Status</th>
                 </tr>
-                {% for index, (header, value) in zipped_data %}
-                    <tr>
-                        <td><strong>{{ header }}</strong></td>
-                        <td><input type="text" name="data_{{ index }}" value="{{ value }}"></td>
-                        <td>
-                            {% if index != 0 and index != zipped_data|length - 1 %}
-                                <select name="status_{{ index }}" class="status" onchange="calculateTotalHours()">
-                                    <option value="Pending">Pending</option>
-                                    <option value="Delivered" {% if value == "Delivered" %}selected{% endif %}>Delivered</option>
-                                    <option value="Cancel">Cancel</option>
-                                    <option value="Out Stock">Out Stock</option>
-                                </select>
-                            {% endif %}
-                        </td>
-                    </tr>
-                {% endfor %}
-            </table>
-        </form>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Miguel Rojas</td>
+                    <td><input type="text" value="Miguel Rojas" class="form-control"></td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <td>Small</td>
+                    <td><input type="text" value="Small" class="form-control"></td>
+                    <td>
+                        <select class="form-select status">
+                            <option value="Pending">Pending</option>
+                            <option value="Delivered">Delivered</option>
+                        </select>
+                    </td>
+                </tr>
+                <tr>
+                    <td>Small</td>
+                    <td><input type="text" value="Small" class="form-control"></td>
+                    <td>
+                        <select class="form-select status">
+                            <option value="Pending">Pending</option>
+                            <option value="Delivered">Delivered</option>
+                        </select>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        <div class="text-center mt-3">
+            <h3>Deduction</h3>
+            <p><strong>Total hours owed: <span id="totalHours">0</span> Hrs</strong></p>
+        </div>
     </div>
-
-    <div class="deduction-section">
-        <h2>Deduction</h2>
-        <div class="total-section">Total hours owed: <span id="total-hours">0 Hrs</span></div>
-    </div>
-
+    
     <script>
-        const itemHours = {
-            "Quick dry prime blue active polo": 3,
-            "Amazon Hat": 2,
-            "Rain jacket": 4,
-            "Short Sleeve Polo": 3,
-            "Amazon Vest": 2,
-            "Amazon Pants": 3,
-            "Amazon short pants": 3,
-            "Lightweight Ha": 2
-        };
-
-        function calculateTotalHours() {
-            let totalHours = 0;
-            document.querySelectorAll(".container table tr").forEach(row => {
-                let item = row.cells[0]?.innerText.trim();
-                let statusElement = row.querySelector(".status");
-                if (statusElement?.value === "Delivered" && itemHours[item] !== undefined) {
-                    totalHours += itemHours[item];
+        function calculateDeduction() {
+            let total = 0;
+            $(".status").each(function() {
+                if ($(this).val() === "Delivered") {
+                    total += 1;
                 }
             });
-            document.getElementById("total-hours").innerText = `${totalHours} Hrs`;
+            $("#totalHours").text(total);
         }
-
-        function saveChanges() {
-            let formData = new FormData(document.getElementById("updateForm"));
-
-            fetch("/update", {
-                method: "POST",
-                body: formData
-            })
-            .then(response => response.text())
-            .then(data => {
-                alert("Changes saved successfully!");
-                console.log("Response:", data);
-            })
-            .catch(error => {
-                console.error("Error:", error);
-                alert("Failed to save changes.");
+        
+        $(document).on("change", ".status", function() {
+            calculateDeduction();
+        });
+        
+        $("#saveBtn").on("click", function() {
+            let data = [];
+            $("tbody tr").each(function() {
+                let field = $(this).find("td:first").text();
+                let value = $(this).find("input").val();
+                let status = $(this).find(".status").val();
+                data.push({ field, value, status });
             });
-        }
-
-        document.addEventListener("DOMContentLoaded", calculateTotalHours);
+            
+            $.ajax({
+                url: "/update",
+                type: "POST",
+                contentType: "application/json",
+                data: JSON.stringify({ records: data }),
+                success: function(response) {
+                    alert("Changes saved successfully!");
+                },
+                error: function() {
+                    alert("Error saving changes.");
+                }
+            });
+        });
+        
+        $(document).ready(function() {
+            calculateDeduction();
+        });
     </script>
 </body>
 </html>
