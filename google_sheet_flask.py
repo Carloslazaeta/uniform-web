@@ -1,31 +1,37 @@
-from flask import Flask, render_template, request, jsonify
-import gspread
-from oauth2client.service_account import ServiceAccountCredentials
 import os
+import json
+import gspread
+from flask import Flask, request, render_template, jsonify
+from oauth2client.service_account import ServiceAccountCredentials
 
 app = Flask(__name__)
 
-# Autenticación con Google Sheets
+# Conexión con Google Sheets
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-creds = ServiceAccountCredentials.from_json_keyfile_name("credentials.json", scope)
+credentials_json = json.loads(os.getenv("GOOGLE_CREDENTIALS", "{}"))  # Leer credenciales desde variables de entorno
+creds = ServiceAccountCredentials.from_json_keyfile_dict(credentials_json, scope)
 client = gspread.authorize(creds)
 
-# ID de tu hoja de Google Sheets
-SHEET_ID = "TUID_DE_HOJA_DE_GOOGLE_SHEETS"
+# ID de la hoja de Google Sheets (Reemplázalo con el real o usa variables de entorno)
+SHEET_ID = os.getenv("SHEET_ID", "TU_ID_DE_GOOGLE_SHEETS")
 sheet = client.open_by_key(SHEET_ID).sheet1
 
 
 def get_google_sheet_data():
     """Obtener los datos actuales de la hoja de Google Sheets"""
-    records = sheet.get_all_records()
-    return records
+    try:
+        records = sheet.get_all_records()
+        return records
+    except Exception as e:
+        print(f"❌ Error obteniendo datos de Google Sheets: {str(e)}")
+        return []
 
 
 @app.route("/")
 def index():
     """Página principal que muestra la lista de nombres"""
     records = get_google_sheet_data()
-    names = [row["Name"] for row in records]  # Asegurar que la columna "Name" exista
+    names = [row["Name"] for row in records if "Name" in row]  # Validar existencia de columna "Name"
     return render_template("index.html", names=names)
 
 
@@ -35,11 +41,7 @@ def details():
     name = request.args.get("name")
     records = get_google_sheet_data()
 
-    person_data = None
-    for row in records:
-        if row["Name"] == name:
-            person_data = row
-            break
+    person_data = next((row for row in records if row.get("Name") == name), None)
 
     if not person_data:
         return "No data found for this person.", 404
@@ -47,7 +49,8 @@ def details():
     headers = list(person_data.keys())
     values = list(person_data.values())
 
-    zipped_data = list(zip(headers, values, values))  # Se agrega dos veces values para mantener el status
+    # Se duplica values para mantener el formato de la tabla
+    zipped_data = list(zip(headers, values, values))  
 
     return render_template("details.html", name=name, zipped_data=zipped_data)
 
@@ -57,28 +60,30 @@ def update():
     """Guardar los cambios realizados en la tabla"""
     try:
         data = request.json
-        name = data["name"]
-        values = data["values"]
-        status = data["status"]
+        name = data.get("name")
+        values = data.get("values", [])
+        status = data.get("status", [])
 
         records = get_google_sheet_data()
         row_index = None
 
-        # Buscar la fila correspondiente
-        for index, row in enumerate(records, start=2):  # Empieza en 2 porque la fila 1 es de encabezados
-            if row["Name"] == name:
+        # Buscar la fila correspondiente al nombre
+        for index, row in enumerate(records, start=2):  # Empieza en la fila 2 (1 es encabezado)
+            if row.get("Name") == name:
                 row_index = index
                 break
 
         if row_index is None:
             return jsonify({"message": "Error: Name not found"}), 400
 
-        # Guardar los valores en la hoja de Google Sheets
+        # Guardar los valores en Google Sheets
         for i, value in enumerate(values):
-            sheet.update_cell(row_index, i + 2, value)  # Actualiza valores
-            sheet.update_cell(row_index, i + 3, status[i])  # Actualiza estado
+            sheet.update_cell(row_index, i + 2, value)  # Columna de valores
+            if i < len(status):
+                sheet.update_cell(row_index, i + 3, status[i])  # Columna de estado
 
         return jsonify({"message": "Changes saved successfully!"})
+
     except Exception as e:
         return jsonify({"message": f"Error saving changes: {str(e)}"}), 500
 
