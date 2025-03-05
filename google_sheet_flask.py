@@ -1,14 +1,18 @@
 from flask import Flask, render_template, request, redirect, url_for
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-import requests
 import json
+import os
+import requests
 
 app = Flask(__name__)
 
-# Configurar credenciales de Google Sheets
-scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-creds = ServiceAccountCredentials.from_json_keyfile_name("service_account.json", scope)
+# Cargar credenciales desde la variable de entorno
+service_account_info = json.loads(os.getenv("GOOGLE_CREDENTIALS", "{}"))
+creds = ServiceAccountCredentials.from_json_keyfile_dict(service_account_info, [
+    "https://spreadsheets.google.com/feeds",
+    "https://www.googleapis.com/auth/drive"
+])
 client = gspread.authorize(creds)
 
 # ID de la hoja de cálculo
@@ -16,7 +20,7 @@ SHEET_ID = "1zzVvvvZzo3Jp_WGwf-aQP_P8bBHluXX5e2Wssvd0XVg"
 GID = "945204493"
 URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:json&gid={GID}"
 
-# Abrir hoja
+# Abrir la hoja
 sheet = client.open_by_key(SHEET_ID).sheet1
 
 def get_google_sheet_data():
@@ -25,14 +29,14 @@ def get_google_sheet_data():
         if response.status_code != 200:
             print("Error: No se pudo obtener datos de Google Sheets.")
             return [], []
-        
+
         text = response.text[47:-2]  # Limpiar el JSON devuelto por Google Sheets
         data = json.loads(text)
-        
+
         if "table" not in data or "rows" not in data["table"]:
             print("Error: Formato inesperado en la respuesta de Google Sheets.")
             return [], []
-        
+
         rows = data["table"]["rows"]
         
         # Extraer encabezados
@@ -42,7 +46,7 @@ def get_google_sheet_data():
         records = []
         for row in rows[1:]:  # Ignorar la primera fila (encabezados)
             records.append([cell["v"] if cell else "" for cell in row["c"]])
-        
+
         return headers, records
     except Exception as e:
         print("Error inesperado:", e)
@@ -57,7 +61,7 @@ def home():
 def details():
     name = request.args.get("name", "")
     headers, records = get_google_sheet_data()
-    
+
     # Buscar la fila correspondiente al nombre seleccionado
     person_data = None
     row_index = None
@@ -82,10 +86,10 @@ def details():
 def update():
     row_index = request.form["row_index"]  # Fila a actualizar en Google Sheets
     updated_data = [request.form[f"data_{i}"] for i in range(10)]  # Extraer datos del formulario
-    
+
     # Escribir en Google Sheets
     sheet.update(f"B{row_index}:K{row_index}", [updated_data])
-    
+
     return redirect(url_for("home"))
 
 if __name__ == "__main__":
