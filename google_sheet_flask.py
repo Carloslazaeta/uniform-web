@@ -1,92 +1,91 @@
-import os
-import json
+from flask import Flask, render_template, request, redirect, url_for, jsonify
 import gspread
-from flask import Flask, request, render_template, jsonify
 from oauth2client.service_account import ServiceAccountCredentials
+import json
+import os
 
 app = Flask(__name__)
 
-# Conexión con Google Sheets
-scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-credentials_json = json.loads(os.getenv("GOOGLE_CREDENTIALS", "{}"))  # Leer credenciales desde variables de entorno
-creds = ServiceAccountCredentials.from_json_keyfile_dict(credentials_json, scope)
-client = gspread.authorize(creds)
+# 🟢 Cargar credenciales de Google desde variables de entorno
+try:
+    service_account_info = json.loads(os.getenv("GOOGLE_CREDENTIALS", "{}"))
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(service_account_info, [
+        "https://spreadsheets.google.com/feeds",
+        "https://www.googleapis.com/auth/drive"
+    ])
+    client = gspread.authorize(creds)
+    print("✅ Conexión exitosa con Google Sheets")
+except Exception as e:
+    print("❌ ERROR al cargar credenciales:", e)
+    exit(1)
 
-# ID de la hoja de Google Sheets (Reemplázalo con el real o usa variables de entorno)
-SHEET_ID = os.getenv("SHEET_ID", "TU_ID_DE_GOOGLE_SHEETS")
-sheet = client.open_by_key(SHEET_ID).sheet1
+# 🟢 ID de Google Sheets
+SHEET_ID = "1zzVvvvZzo3Jp_WGwf-aQP_P8bBHluXX5e2Wssvd0XVg"
+try:
+    sheet = client.open_by_key(SHEET_ID).sheet1
+    print("✅ Hoja de cálculo cargada correctamente")
+except Exception as e:
+    print("❌ ERROR al abrir la hoja de cálculo:", e)
+    exit(1)
 
-
+# 🟢 Obtener datos de Google Sheets
 def get_google_sheet_data():
-    """Obtener los datos actuales de la hoja de Google Sheets"""
     try:
-        records = sheet.get_all_records()
-        return records
-    except Exception as e:
-        print(f"❌ Error obteniendo datos de Google Sheets: {str(e)}")
-        return []
+        data = sheet.get_all_values()
+        if not data:
+            return [], []
+        
+        headers = data[0]  # Primera fila como encabezados
+        records = data[1:]  # Datos desde la segunda fila
 
+        return headers, records
+    except Exception as e:
+        print("❌ ERROR al obtener datos de Google Sheets:", e)
+        return [], []
 
 @app.route("/")
-def index():
-    """Página principal que muestra la lista de nombres"""
-    records = get_google_sheet_data()
-    names = [row["Name"] for row in records if "Name" in row]  # Validar existencia de columna "Name"
+def home():
+    _, records = get_google_sheet_data()
+    names = [row[1] for row in records if len(row) > 1]  # Columna B (índice 1)
     return render_template("index.html", names=names)
 
-
-@app.route("/details")
+@app.route("/details", methods=["GET"])
 def details():
-    """Muestra los detalles de un empleado"""
-    name = request.args.get("name")
-    records = get_google_sheet_data()
+    name = request.args.get("name", "")
+    headers, records = get_google_sheet_data()
 
-    person_data = next((row for row in records if row.get("Name") == name), None)
+    person_data = None
+    row_index = None
+    for index, row in enumerate(records, start=2):  # Empieza en fila 2
+        if len(row) > 1 and row[1] == name:
+            person_data = row
+            row_index = index
+            break
 
     if not person_data:
-        return "No data found for this person.", 404
+        return "<h2>No data found for this person.</h2>"
 
-    headers = list(person_data.keys())
-    values = list(person_data.values())
+    headers_filtered = headers[1:11]  # Mostrar solo columnas B-K
+    person_data_filtered = person_data[1:11]
 
-    # Se duplica values para mantener el formato de la tabla
-    zipped_data = list(zip(headers, values, values))  
+    zipped_data = list(enumerate(zip(headers_filtered, person_data_filtered)))
 
-    return render_template("details.html", name=name, zipped_data=zipped_data)
-
+    return render_template("details.html", headers=headers_filtered, data=person_data_filtered, zipped_data=zipped_data, name=name, row_index=row_index)
 
 @app.route("/update", methods=["POST"])
 def update():
-    """Guardar los cambios realizados en la tabla"""
     try:
-        data = request.json
-        name = data.get("name")
-        values = data.get("values", [])
-        status = data.get("status", [])
+        row_index = request.form["row_index"]
+        updated_data = [request.form[f"data_{i}"] for i in range(10)]
 
-        records = get_google_sheet_data()
-        row_index = None
-
-        # Buscar la fila correspondiente al nombre
-        for index, row in enumerate(records, start=2):  # Empieza en la fila 2 (1 es encabezado)
-            if row.get("Name") == name:
-                row_index = index
-                break
-
-        if row_index is None:
-            return jsonify({"message": "Error: Name not found"}), 400
-
-        # Guardar los valores en Google Sheets
-        for i, value in enumerate(values):
-            sheet.update_cell(row_index, i + 2, value)  # Columna de valores
-            if i < len(status):
-                sheet.update_cell(row_index, i + 3, status[i])  # Columna de estado
+        # 🟢 Escribir en Google Sheets
+        sheet.update(f"B{row_index}", [updated_data])
+        print(f"✅ Datos actualizados en fila {row_index}: {updated_data}")
 
         return jsonify({"message": "Changes saved successfully!"})
-
     except Exception as e:
+        print(f"❌ ERROR al actualizar Google Sheets en fila {row_index}: {e}")
         return jsonify({"message": f"Error saving changes: {str(e)}"}), 500
-
 
 if __name__ == "__main__":
     app.run(debug=True)

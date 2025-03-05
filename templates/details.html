@@ -3,120 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Uniform for {{ name }}</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f4f4;
-            text-align: center;
-            padding: 20px;
-        }
-        .container {
-            background-color: white;
-            width: 60%;
-            margin: auto;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            position: relative;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-        }
-        th, td {
-            border: 1px solid #ddd;
-            padding: 10px;
-            text-align: left;
-        }
-        th {
-            background-color: #007BFF;
-            color: white;
-        }
-        select, input[type='text'] {
-            padding: 5px;
-            border-radius: 5px;
-            width: 100%;
-        }
-        .save-btn {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background-color: #28a745;
-            color: white;
-            border: none;
-            padding: 10px 15px;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-        .save-btn:hover {
-            background-color: #218838;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h2>Uniform for {{ name }}</h2>
-        <button class="save-btn" onclick="saveChanges()">Save</button>
-        <form id="uniformForm">
-            <table>
-                <tr>
-                    <th>Field</th>
-                    <th>Value</th>
-                    <th>Status</th>
-                </tr>
-                {% for index, (header, value, status) in zipped_data %}
-                    <tr>
-                        <td><strong>{{ header }}</strong></td>
-                        <td><input type="text" name="values" value="{{ value }}"></td>
-                        <td>
-                            <select name="status">
-                                <option value="Pending" {% if status == 'Pending' %}selected{% endif %}>Pending</option>
-                                <option value="Delivered" {% if status == 'Delivered' %}selected{% endif %}>Delivered</option>
-                                <option value="Cancel" {% if status == 'Cancel' %}selected{% endif %}>Cancel</option>
-                                <option value="Out Stock" {% if status == 'Out Stock' %}selected{% endif %}>Out Stock</option>
-                            </select>
-                        </td>
-                    </tr>
-                {% endfor %}
-            </table>
-        </form>
-    </div>
-
+    <title>Details for {{ name }}</title>
     <script>
         function saveChanges() {
-            let formData = new FormData(document.getElementById("uniformForm"));
-            let values = [];
-            let status = [];
-
-            document.querySelectorAll("input[name='values']").forEach(input => {
-                values.push(input.value);
-            });
-            document.querySelectorAll("select[name='status']").forEach(select => {
-                status.push(select.value);
-            });
-
-            let data = {
-                name: "{{ name }}",
-                values: values,
-                status: status
-            };
-
-            fetch('/update', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
+            let formData = new FormData(document.getElementById("updateForm"));
+            
+            fetch("/update", {
+                method: "POST",
+                body: formData
             })
             .then(response => response.json())
-            .then(result => {
-                alert(result.message);
+            .then(data => {
+                alert(data.message);
             })
             .catch(error => {
-                console.error('Error:', error);
-                alert('Failed to save changes.');
+                console.error("Error:", error);
             });
         }
     </script>
+</head>
+<body>
+    <h2>Details for {{ name }}</h2>
+    <form id="updateForm">
+        <input type="hidden" name="row_index" value="{{ row_index }}">
+        <table border="1">
+            <tr>
+                <th>Field</th>
+                <th>Value</th>
+            </tr>
+            {% for index, (field, value) in zipped_data %}
+            <tr>
+                <td>{{ field }}</td>
+                <td><input type="text" name="data_{{ index }}" value="{{ value }}"></td>
+            </tr>
+            {% endfor %}
+        </table>
+        <button type="button" onclick="saveChanges()">Save</button>
+    </form>
 </body>
 </html>
