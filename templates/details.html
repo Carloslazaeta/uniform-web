@@ -16,11 +16,12 @@
         }
         .container {
             background-color: white;
-            width: 60%;
+            width: 50%;
             margin: auto;
             padding: 20px;
             border-radius: 10px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            position: relative;
         }
         table {
             width: 100%;
@@ -36,21 +37,49 @@
             background-color: #007BFF;
             color: white;
         }
-        input[type='text'], input[type='number'], select {
-            width: 100%;
+        select, input[type='number'], input[type='checkbox'] {
             padding: 5px;
             border-radius: 5px;
-            border: 1px solid #ccc;
         }
+        .deduction-section {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .deduction-table {
+            width: 100%;
+            margin-top: 10px;
+            border-collapse: collapse;
+        }
+        .deduction-table th, .deduction-table td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: center;
+        }
+        .controls {
+            margin-top: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+        }
+        .controls input {
+            width: 80px;
+        }
+        /* Botón Save */
         .save-button {
+            position: absolute;
+            top: 10px;
+            right: 10px;
             background-color: #28a745;
             color: white;
             border: none;
-            padding: 10px 20px;
-            font-size: 16px;
-            cursor: pointer;
+            padding: 10px 15px;
             border-radius: 5px;
-            margin-top: 20px;
+            cursor: pointer;
+            font-size: 14px;
         }
         .save-button:hover {
             background-color: #218838;
@@ -60,67 +89,127 @@
 <body>
     <div class="container">
         <h2>Uniform for {{ name }}</h2>
-        <form id="updateForm" action="/update" method="POST">
-            <input type="hidden" name="row_index" value="{{ row_index }}">
-
-            <!-- Tabla principal -->
-            <h3>Uniform Details</h3>
-            <table>
+        <button class="save-button" onclick="saveChanges()">Save</button>
+        <table>
+            <tr>
+                <th>Field</th>
+                <th>Value</th>
+                <th>Status</th>
+            </tr>
+            {% for index, (header, value) in zipped_data %}
                 <tr>
-                    <th>Field</th>
-                    <th>Value</th>
-                    <th>Status</th>
-                </tr>
-                {% for index, (header, value) in zipped_data %}
-                    <tr>
-                        <td><strong>{{ header }}</strong></td>
-                        <td>
-                            <input type="text" name="data_{{ index }}" value="{{ value }}">
-                        </td>
-                        <td>
-                            <select class="status">
+                    <td><strong>{{ header }}</strong></td>
+                    <td>{{ value }}</td>
+                    <td>
+                        {% if index != 0 and index != zipped_data|length - 1 %}
+                            <select class="status" onchange="calculateTotalHours()">
                                 <option value="Pending">Pending</option>
                                 <option value="Delivered">Delivered</option>
                                 <option value="Cancel">Cancel</option>
                                 <option value="Out Stock">Out Stock</option>
                             </select>
-                        </td>
-                    </tr>
-                {% endfor %}
-            </table>
-
-            <!-- Deductions Section -->
-            <h3>Deductions</h3>
-            <table>
-                <tr>
-                    <th>Item</th>
-                    <th>Cost ($)</th>
-                    <th>Paid</th>
+                        {% endif %}
+                    </td>
                 </tr>
-                <tr>
-                    <td>Shirt</td>
-                    <td><input type="number" name="deduction_shirt" value="0"></td>
-                    <td><input type="checkbox" name="paid_shirt"></td>
-                </tr>
-                <tr>
-                    <td>Pants</td>
-                    <td><input type="number" name="deduction_pants" value="0"></td>
-                    <td><input type="checkbox" name="paid_pants"></td>
-                </tr>
-                <tr>
-                    <td>Shoes</td>
-                    <td><input type="number" name="deduction_shoes" value="0"></td>
-                    <td><input type="checkbox" name="paid_shoes"></td>
-                </tr>
-                <tr>
-                    <td>Other</td>
-                    <td><input type="number" name="deduction_other" value="0"></td>
-                    <td><input type="checkbox" name="paid_other"></td>
-                </tr>
-            </table>
-
-            <button type="submit" class="save-button">Save</button>
-        </form>
+            {% endfor %}
+        </table>
     </div>
+
+    <div class="deduction-section">
+        <h2>Deduction</h2>
+        <div class="total-section">Total hours owed: <span id="total-hours">0 Hrs</span></div>
+        <div class="controls">
+            <input type="number" id="deduct-hours" min="0" step="1">
+            <button onclick="addDeduction()">Deduct</button>
+        </div>
+        <br>
+        <label>
+            <input type="checkbox" id="old-employee" onchange="toggleOldEmployee()"> Old Employee
+        </label>
+        <h3>Deduction History</h3>
+        <table class="deduction-table">
+            <tr>
+                <th>Date</th>
+                <th>Hours Deducted</th>
+                <th>Remaining Hours</th>
+                <th>Actions</th>
+            </tr>
+            <tbody id="deduction-history">
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        const itemHours = {
+            "Quick dry prime blue active polo": 3,
+            "Amazon Hat": 2,
+            "Rain jacket": 4,
+            "Short Sleeve Polo": 3,
+            "Amazon Vest": 2,
+            "Amazon Pants": 3,
+            "Amazon short pants": 3,
+            "Lightweight Ha": 2
+        };
+
+        function calculateTotalHours() {
+            let totalHours = 0;
+            document.querySelectorAll(".container table tr").forEach(row => {
+                let item = row.cells[0]?.innerText.trim();
+                let statusElement = row.querySelector(".status");
+                if (statusElement?.value === "Delivered" && itemHours[item] !== undefined) {
+                    totalHours += itemHours[item];
+                }
+            });
+            document.getElementById("total-hours").innerText = `${totalHours} Hrs`;
+        }
+
+        function toggleOldEmployee() {
+            let checkbox = document.getElementById("old-employee");
+            if (checkbox.checked) {
+                document.getElementById("total-hours").innerText = "0 Hrs";
+            } else {
+                calculateTotalHours();
+            }
+        }
+
+        function addDeduction() {
+            let deductHours = parseInt(document.getElementById("deduct-hours").value) || 0;
+            let totalHoursElem = document.getElementById("total-hours");
+            let currentHours = parseInt(totalHoursElem.innerText.replace(" Hrs", "")) || 0;
+
+            if (deductHours > currentHours) {
+                alert("Cannot deduct more hours than available.");
+                return;
+            }
+
+            let remainingHours = currentHours - deductHours;
+            totalHoursElem.innerText = `${remainingHours} Hrs`;
+
+            let table = document.getElementById("deduction-history");
+            let newRow = table.insertRow();
+            newRow.innerHTML = `<td>${new Date().toLocaleDateString()}</td>
+                                <td>${deductHours} Hrs</td>
+                                <td>${remainingHours} Hrs</td>
+                                <td><button onclick="editDeduction(this)">Edit</button></td>`;
+        }
+
+        function editDeduction(button) {
+            let row = button.parentElement.parentElement;
+            let deductedCell = row.cells[1];
+            let deductedHours = parseInt(deductedCell.innerText.replace(" Hrs", "")) || 0;
+            let newHours = prompt("Enter new deducted hours:", deductedHours);
+            if (newHours !== null && !isNaN(newHours)) {
+                deductedCell.innerText = `${newHours} Hrs`;
+                calculateTotalHours();
+            }
+        }
+
+        function saveChanges() {
+            alert("Changes saved successfully!");
+            // Aquí puedes implementar la lógica para guardar los cambios en el servidor
+        }
+
+        document.addEventListener("DOMContentLoaded", calculateTotalHours);
+    </script>
 </body>
 </html>
