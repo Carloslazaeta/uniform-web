@@ -1,1 +1,7 @@
+# Ignorar entorno virtual
+.venv/
+
+# Ignorar credenciales y archivos sensibles
 service_account.json
+service_account.json.json
+.env
