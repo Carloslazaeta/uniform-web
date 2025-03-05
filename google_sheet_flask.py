@@ -75,11 +75,17 @@ def details():
 @app.route("/update", methods=["POST"])
 def update():
     try:
-        row_index = request.form["row_index"]
-        updated_data = [request.form[f"data_{i}"] for i in range(10)]
+        data = request.json
+        row_index = data.get("row_index")
+        updated_data = data.get("values")
+
+        if not row_index or not updated_data:
+            return jsonify({"message": "Error: Missing data"}), 400
 
         # 🟢 Escribir en Google Sheets
-        sheet.update(f"B{row_index}", [updated_data])
+        for i, value in enumerate(updated_data):
+            sheet.update_cell(int(row_index), i + 2, value)  # Columna B en adelante
+
         print(f"✅ Datos actualizados en fila {row_index}: {updated_data}")
 
         return jsonify({"message": "Changes saved successfully!"})
