@@ -10,6 +10,7 @@
             background-color: #f4f4f4;
             text-align: center;
             padding: 20px;
+            position: relative;
         }
         h2 {
             color: #333;
@@ -42,6 +43,21 @@
         select option {
             padding: 10px;
         }
+        .save-button {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .save-button:hover {
+            background-color: #218838;
+        }
     </style>
     <script>
         function filterNames() {
@@ -60,9 +76,15 @@
                 window.open("/details?name=" + encodeURIComponent(selectedName), "_blank", "width=500,height=400");
             }
         }
+
+        function saveChanges() {
+            alert("Changes saved successfully!");
+            // Aquí puedes agregar una petición fetch o AJAX para enviar los datos al servidor.
+        }
     </script>
 </head>
 <body>
+    <button class="save-button" onclick="saveChanges()">Save</button>
     <h2>Uniform Request</h2>
     <div class="list-container">
         <input type="text" id="search" onkeyup="filterNames()" placeholder="Search names...">
