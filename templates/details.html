@@ -16,7 +16,7 @@
         }
         .container {
             background-color: white;
-            width: 50%;
+            width: 60%;
             margin: auto;
             padding: 20px;
             border-radius: 10px;
@@ -36,19 +36,11 @@
             background-color: #007BFF;
             color: white;
         }
-        select, input[type='number'], input[type='checkbox'] {
+        input[type='text'], input[type='number'], select {
+            width: 100%;
             padding: 5px;
             border-radius: 5px;
-        }
-        .controls {
-            margin-top: 10px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 10px;
-        }
-        .controls input {
-            width: 80px;
+            border: 1px solid #ccc;
         }
         .save-button {
             background-color: #28a745;
@@ -70,6 +62,9 @@
         <h2>Uniform for {{ name }}</h2>
         <form id="updateForm" action="/update" method="POST">
             <input type="hidden" name="row_index" value="{{ row_index }}">
+
+            <!-- Tabla principal -->
+            <h3>Uniform Details</h3>
             <table>
                 <tr>
                     <th>Field</th>
@@ -93,6 +88,37 @@
                     </tr>
                 {% endfor %}
             </table>
+
+            <!-- Deductions Section -->
+            <h3>Deductions</h3>
+            <table>
+                <tr>
+                    <th>Item</th>
+                    <th>Cost ($)</th>
+                    <th>Paid</th>
+                </tr>
+                <tr>
+                    <td>Shirt</td>
+                    <td><input type="number" name="deduction_shirt" value="0"></td>
+                    <td><input type="checkbox" name="paid_shirt"></td>
+                </tr>
+                <tr>
+                    <td>Pants</td>
+                    <td><input type="number" name="deduction_pants" value="0"></td>
+                    <td><input type="checkbox" name="paid_pants"></td>
+                </tr>
+                <tr>
+                    <td>Shoes</td>
+                    <td><input type="number" name="deduction_shoes" value="0"></td>
+                    <td><input type="checkbox" name="paid_shoes"></td>
+                </tr>
+                <tr>
+                    <td>Other</td>
+                    <td><input type="number" name="deduction_other" value="0"></td>
+                    <td><input type="checkbox" name="paid_other"></td>
+                </tr>
+            </table>
+
             <button type="submit" class="save-button">Save</button>
         </form>
     </div>
