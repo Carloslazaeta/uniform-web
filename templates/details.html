@@ -1,135 +1,34 @@
-from flask import Flask, render_template, request, redirect, url_for
-import gspread
-from oauth2client.service_account import ServiceAccountCredentials
-import json
-import os
-import requests
-from datetime import datetime
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Details</title>
+</head>
+<body>
+    <h1>Details for {{ name }}</h1>
+    <form method="POST" action="{{ url_for('update') }}">
+        <input type="hidden" name="row_index" value="{{ row_index }}">
+        <table border="1">
+            <tr>
+                <th>Field</th>
+                <th>Value</th>
+            </tr>
+            {% for index, (header, value) in zipped_data %}
+            <tr>
+                <td>{{ header }}</td>
+                <td><input type="text" name="data_{{ index }}" value="{{ value }}"></td>
+            </tr>
+            {% endfor %}
+        </table>
+        <button type="submit">Save Changes</button>
+    </form>
+    
+    <!-- Botón para guardar backup -->
+    <form method="POST" action="{{ url_for('backup') }}">
+        <button type="submit">Save Backup</button>
+    </form>
 
-app = Flask(__name__)
-
-# Cargar credenciales desde la variable de entorno
-service_account_info = json.loads(os.getenv("GOOGLE_CREDENTIALS", "{}"))
-
-try:
-    creds = ServiceAccountCredentials.from_json_keyfile_dict(service_account_info, [
-        "https://spreadsheets.google.com/feeds",
-        "https://www.googleapis.com/auth/drive"
-    ])
-    client = gspread.authorize(creds)
-    print("✅ Conexión con Google Sheets establecida correctamente.")
-except Exception as e:
-    print(f"❌ Error en la autenticación con Google Sheets: {e}")
-
-# ID de la hoja de cálculo
-SHEET_ID = "1zzVvvvZzo3Jp_WGwf-aQP_P8bBHluXX5e2Wssvd0XVg"
-GID = "945204493"
-URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:json&gid={GID}"
-
-# Abrir la hoja principal
-sheet = client.open_by_key(SHEET_ID).sheet1
-
-# Verificar si la hoja "Backup" ya existe, si no, crearla
-try:
-    backup_sheet = client.open_by_key(SHEET_ID).worksheet("Backup")
-    print("✅ Hoja de Backup encontrada.")
-except gspread.exceptions.WorksheetNotFound:
-    backup_sheet = client.open_by_key(SHEET_ID).add_worksheet(title="Backup", rows="100", cols="10")
-    print("✅ Hoja de Backup creada.")
-
-def get_google_sheet_data():
-    """Obtiene los datos de Google Sheets."""
-    try:
-        response = requests.get(URL)
-        if response.status_code != 200:
-            print("❌ Error: No se pudo obtener datos de Google Sheets.")
-            return [], []
-
-        text = response.text[47:-2]  # Limpiar el JSON devuelto por Google Sheets
-        data = json.loads(text)
-
-        if "table" not in data or "rows" not in data["table"]:
-            print("❌ Error: Formato inesperado en la respuesta de Google Sheets.")
-            return [], []
-
-        rows = data["table"]["rows"]
-
-        # Extraer encabezados
-        headers = [col["label"] for col in data["table"]["cols"] if "label" in col]
-
-        # Extraer todas las filas
-        records = []
-        for row in rows[1:]:  # Ignorar la primera fila (encabezados)
-            records.append([cell["v"] if cell else "" for cell in row["c"]])
-
-        return headers, records
-    except Exception as e:
-        print(f"❌ Error inesperado: {e}")
-        return [], []
-
-@app.route("/")
-def home():
-    """Página principal que muestra la lista de nombres."""
-    names = [row[1] for row in get_google_sheet_data()[1] if len(row) > 1]
-    return render_template("index.html", names=names)
-
-@app.route("/details", methods=["GET", "POST"])
-def details():
-    """Página de detalles de un empleado."""
-    name = request.args.get("name", "")
-    headers, records = get_google_sheet_data()
-
-    # Buscar la fila correspondiente al nombre seleccionado
-    person_data = None
-    row_index = None
-    for index, row in enumerate(records, start=2):  # Empezar desde la fila 2 en Sheets
-        if len(row) > 1 and row[1] == name:  # Columna B contiene los nombres
-            person_data = row
-            row_index = index
-            break
-
-    if not person_data:
-        return "<h2>No data found for this person.</h2>"
-
-    # Mostrar solo columnas B a K (índices 1 a 10)
-    headers_filtered = headers[1:11]
-    person_data_filtered = person_data[1:11]
-
-    zipped_data = list(enumerate(zip(headers_filtered, person_data_filtered)))
-
-    return render_template("details.html", headers=headers_filtered, data=person_data_filtered, zipped_data=zipped_data, name=name, row_index=row_index)
-
-@app.route("/update", methods=["POST"])
-def update():
-    """Actualiza la información de un empleado en Google Sheets."""
-    row_index = request.form["row_index"]  # Fila a actualizar en Google Sheets
-    updated_data = [request.form[f"data_{i}"] for i in range(10)]  # Extraer datos del formulario
-
-    # Escribir en Google Sheets
-    sheet.update(f"B{row_index}:K{row_index}", [updated_data])
-
-    return redirect(url_for("home"))
-
-@app.route("/backup", methods=["POST"])
-def backup():
-    """Guarda los datos actuales en la hoja de Backup."""
-    try:
-        headers, records = get_google_sheet_data()
-        
-        if not records:
-            return "<h2>No hay datos para respaldar.</h2>"
-
-        # Limpiar hoja de backup antes de guardar
-        backup_sheet.clear()
-
-        # Guardar encabezados y datos en la hoja de Backup
-        backup_sheet.append_row(headers)
-        for row in records:
-            backup_sheet.append_row(row)
-
-        return "<h2>Backup guardado exitosamente.</h2><br><a href='/'>Volver</a>"
-    except Exception as e:
-        return f"<h2>Error al guardar backup: {e}</h2>"
-
-if __name__ == "__main__":
-    app.run(debug=True)
+    <a href="{{ url_for('home') }}">Back</a>
+</body>
+</html>
