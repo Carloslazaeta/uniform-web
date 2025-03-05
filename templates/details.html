@@ -85,10 +85,10 @@
                     <td>
                         {% if index != 0 and index != zipped_data|length - 1 %}
                             <select class="status" onchange="calculateTotalHours()">
-                                <option value="Pending">Pending</option>
-                                <option value="Delivered">Delivered</option>
-                                <option value="Cancel">Cancel</option>
-                                <option value="Out Stock">Out Stock</option>
+                                <option value="Pending" {% if value == 'Pending' %}selected{% endif %}>Pending</option>
+                                <option value="Delivered" {% if value == 'Delivered' %}selected{% endif %}>Delivered</option>
+                                <option value="Cancel" {% if value == 'Cancel' %}selected{% endif %}>Cancel</option>
+                                <option value="Out Stock" {% if value == 'Out Stock' %}selected{% endif %}>Out Stock</option>
                             </select>
                         {% endif %}
                     </td>
@@ -138,7 +138,8 @@
             document.querySelectorAll(".container table tr").forEach(row => {
                 let item = row.cells[0]?.innerText.trim();
                 let statusElement = row.querySelector(".status");
-                if (statusElement?.value === "Delivered" && itemHours[item] !== undefined) {
+                
+                if (statusElement?.value === "Delivered" && item in itemHours) {
                     totalHours += itemHours[item];
                 }
             });
@@ -147,11 +148,7 @@
 
         function toggleOldEmployee() {
             let checkbox = document.getElementById("old-employee");
-            if (checkbox.checked) {
-                document.getElementById("total-hours").innerText = "0 Hrs";
-            } else {
-                calculateTotalHours();
-            }
+            document.getElementById("total-hours").innerText = checkbox.checked ? "0 Hrs" : calculateTotalHours();
         }
 
         function addDeduction() {
