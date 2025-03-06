@@ -36,21 +36,21 @@
             background-color: #007BFF;
             color: white;
         }
-        select, input[type='number'], input[type='checkbox'] {
+        select {
             padding: 5px;
             border-radius: 5px;
         }
-        .deduction-section {
-            margin-top: 30px;
-            padding: 20px;
-            background-color: #fff;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        .save-button {
+            margin-top: 15px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            cursor: pointer;
+            border-radius: 5px;
         }
-        .total-section {
-            font-size: 18px;
-            font-weight: bold;
-            margin-bottom: 10px;
+        .save-button:hover {
+            background-color: #218838;
         }
     </style>
 </head>
@@ -68,66 +68,21 @@
                     <td><strong>{{ header }}</strong></td>
                     <td>{{ value }}</td>
                     <td>
-                        {% if index != 0 and index != zipped_data|length - 1 %}
-                            <select class="status" onchange="calculateTotalHours()">
-                                <option value="Pending" {% if value == 'Pending' %}selected{% endif %}>Pending</option>
-                                <option value="Delivered" {% if value == 'Delivered' %}selected{% endif %}>Delivered</option>
-                                <option value="Cancel" {% if value == 'Cancel' %}selected{% endif %}>Cancel</option>
-                                <option value="Out Stock" {% if value == 'Out Stock' %}selected{% endif %}>Out Stock</option>
-                            </select>
-                        {% endif %}
+                        <select class="status" onchange="calculateTotalHours()">
+                            <option value="Pending">Pending</option>
+                            <option value="Delivered">Delivered</option>
+                            <option value="Cancel">Cancel</option>
+                            <option value="Out Stock">Out Stock</option>
+                        </select>
                     </td>
                 </tr>
             {% endfor %}
         </table>
-    </div>
-
-    <div class="deduction-section">
-        <h2>Deduction</h2>
-        <div class="total-section">Total hours owed: <span id="total-hours">0 Hrs</span></div>
+        <button class="save-button" onclick="saveChanges()">Save</button>
     </div>
 
     <script>
         const itemHours = {
             "Quick dry prime blue active polo": 3,
             "Amazon Hat": 2,
-            "Rain jacket": 4,
-            "Short Sleeve Polo": 3,
-            "Amazon Vest": 2,
-            "Amazon Pants": 3,
-            "Amazon short pants": 3,
-            "Lightweight Ha": 2
-        };
-
-        function calculateTotalHours() {
-            let totalHours = 0;
-            document.querySelectorAll(".container table tr").forEach(row => {
-                let item = row.cells[0]?.innerText.trim();
-                let statusElement = row.querySelector(".status");
-
-                if (statusElement && statusElement.value === "Delivered") {
-                    console.log("Checking item:", item, "Status:", statusElement.value);
-
-                    if (item in itemHours) {
-                        totalHours += itemHours[item];
-                        console.log("Adding", itemHours[item], "hours for", item);
-                    } else {
-                        console.log("Item not found in itemHours:", item);
-                    }
-                }
-            });
-
-            document.getElementById("total-hours").innerText = `${totalHours} Hrs`;
-        }
-
-        document.addEventListener("DOMContentLoaded", calculateTotalHours);
-
-        function showDetails() {
-            let selectedName = document.getElementById("nameList").value;
-            if (selectedName) {
-                window.open("/details?name=" + encodeURIComponent(selectedName), "_blank", "width=900,height=600");
-            }
-        }
-    </script>
-</body>
-</html>
+            "Rain j
