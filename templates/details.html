@@ -115,7 +115,7 @@
         <div class="total-section">Total hours owed: <span id="total-hours">0 Hrs</span></div>
         <div class="controls">
             <input type="number" id="deduct-hours" min="0" step="1">
-            <button onclick="addDeduction()">Deduct</button>
+            <button onclick="deductHours()">Deduct</button>
         </div>
         <br>
         <label>
@@ -146,32 +146,83 @@
             "Lightweight Ha": 2,
             "Lightweight Bucket Hat": 2
         };
-    
+
+        let totalHoursOwed = 0;
+        let deductionHistory = [];
+
         function calculateTotalHours() {
-            let totalHours = 0;
+            totalHoursOwed = 0;
             document.querySelectorAll(".container table tr").forEach(row => {
-                let item = row.cells[0]?.innerText.trim();  // Obtener el nombre del artículo
-                let statusElement = row.querySelector(".status"); // Buscar el dropdown de estado
-                
+                let item = row.cells[0]?.innerText.trim();
+                let statusElement = row.querySelector(".status");
+
                 if (statusElement?.value === "Delivered") {
-                    let cleanItemName = item.replace(/ Small| Large| Medium| One Size/g, "").trim(); // Limpiar tamaño del nombre
+                    let cleanItemName = item.replace(/ Small| Large| Medium| One Size/g, "").trim();
                     if (itemHours[cleanItemName] !== undefined) {
-                        totalHours += itemHours[cleanItemName];
+                        totalHoursOwed += itemHours[cleanItemName];
                     }
                 }
             });
-            document.getElementById("total-hours").innerText = `${totalHours} Hrs`;
+            updateTotalHours();
         }
-    
+
+        function updateTotalHours() {
+            document.getElementById("total-hours").innerText = `${totalHoursOwed} Hrs`;
+        }
+
+        function deductHours() {
+            let deductInput = document.getElementById("deduct-hours");
+            let amountToDeduct = parseInt(deductInput.value);
+
+            if (isNaN(amountToDeduct) || amountToDeduct <= 0) {
+                alert("Enter a valid number of hours to deduct.");
+                return;
+            }
+
+            if (amountToDeduct > totalHoursOwed) {
+                alert("Cannot deduct more than the total owed.");
+                return;
+            }
+
+            totalHoursOwed -= amountToDeduct;
+            deductionHistory.push({ date: new Date().toLocaleString(), amount: amountToDeduct, remaining: totalHoursOwed });
+
+            updateTotalHours();
+            updateDeductionHistory();
+            deductInput.value = "";
+        }
+
+        function updateDeductionHistory() {
+            let historyList = document.getElementById("deduction-history");
+            historyList.innerHTML = deductionHistory.map(d => 
+                `<tr>
+                    <td>${d.date}</td>
+                    <td>${d.amount} Hrs</td>
+                    <td>${d.remaining} Hrs</td>
+                    <td><button onclick="removeDeduction(${d.amount})">Undo</button></td>
+                </tr>`
+            ).join("");
+        }
+
+        function removeDeduction(amount) {
+            totalHoursOwed += amount;
+            deductionHistory.pop();
+            updateTotalHours();
+            updateDeductionHistory();
+        }
+
         function toggleOldEmployee() {
             let checkbox = document.getElementById("old-employee");
             if (checkbox.checked) {
-                document.getElementById("total-hours").innerText = "0 Hrs";
+                totalHoursOwed = 0;
             } else {
                 calculateTotalHours();
             }
+            updateTotalHours();
         }
-    
+
         document.addEventListener("DOMContentLoaded", calculateTotalHours);
     </script>
-    
+
+</body>
+</html>
