@@ -39,28 +39,7 @@
             background-color: white;
             color: #333;
         }
-        select option {
-            padding: 10px;
-        }
     </style>
-    <script>
-        function filterNames() {
-            let input = document.getElementById("search").value.toLowerCase();
-            let options = document.getElementById("nameList").options;
-            
-            for (let i = 0; i < options.length; i++) {
-                let txt = options[i].text.toLowerCase();
-                options[i].style.display = txt.includes(input) ? "block" : "none";
-            }
-        }
-        
-        function showDetails() {
-            let selectedName = document.getElementById("nameList").value;
-            if (selectedName) {
-                window.open(`/details?name=${encodeURIComponent(selectedName)}`, "_blank", "width=800,height=600");
-            }
-        }
-    </script>
 </head>
 <body>
     <h2>Uniform Request</h2>
@@ -72,5 +51,14 @@
             {% endfor %}
         </select>
     </div>
+
+    <script>
+        function showDetails() {
+            let selectedName = document.getElementById("nameList").value;
+            if (selectedName) {
+                window.open("/details?name=" + encodeURIComponent(selectedName), "_blank", "width=800,height=600");
+            }
+        }
+    </script>
 </body>
 </html>
