@@ -1,12 +1,13 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, redirect, url_for
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import json
 import os
+import requests
 
 app = Flask(__name__)
 
-# Cargar credenciales de Google desde variables de entorno
+# 🟢 1. Cargar credenciales de la variable de entorno
 try:
     service_account_info = json.loads(os.getenv("GOOGLE_CREDENTIALS", "{}"))
     creds = ServiceAccountCredentials.from_json_keyfile_dict(service_account_info, [
@@ -17,9 +18,9 @@ try:
     print("✅ Conexión exitosa con Google Sheets")
 except Exception as e:
     print("❌ ERROR al cargar credenciales:", e)
-    exit(1)
+    exit(1)  # Detener ejecución si no hay credenciales válidas
 
-# ID de Google Sheets
+# 🟢 2. Verificar acceso a Google Sheets
 SHEET_ID = "1zzVvvvZzo3Jp_WGwf-aQP_P8bBHluXX5e2Wssvd0XVg"
 try:
     sheet = client.open_by_key(SHEET_ID).sheet1
@@ -28,8 +29,14 @@ except Exception as e:
     print("❌ ERROR al abrir la hoja de cálculo:", e)
     exit(1)
 
+# 📌 Prueba de escritura en la celda B2
+try:
+    sheet.update("B2", [["Test de escritura"]])
+    print("✅ Permisos de edición confirmados")
+except Exception as e:
+    print("⚠️ No se pudo escribir en la hoja. Verifica los permisos:", e)
 
-# 🟢 Obtener datos de Google Sheets
+# 🟢 3. Obtener datos de Google Sheets
 def get_google_sheet_data():
     try:
         data = sheet.get_all_values()
@@ -44,15 +51,13 @@ def get_google_sheet_data():
         print("❌ ERROR al obtener datos de Google Sheets:", e)
         return [], []
 
-
 @app.route("/")
 def home():
     _, records = get_google_sheet_data()
     names = [row[1] for row in records if len(row) > 1]  # Columna B (índice 1)
     return render_template("index.html", names=names)
 
-
-@app.route("/details", methods=["GET"])
+@app.route("/details", methods=["GET", "POST"])
 def details():
     name = request.args.get("name", "")
     headers, records = get_google_sheet_data()
@@ -75,26 +80,21 @@ def details():
 
     return render_template("details.html", headers=headers_filtered, data=person_data_filtered, zipped_data=zipped_data, name=name, row_index=row_index)
 
-
 @app.route("/update", methods=["POST"])
 def update():
     try:
-        row_index = request.json.get("row_index")
-        updated_data = request.json.get("values", [])
+        row_index = request.form["row_index"]
+        updated_data = [request.form[f"data_{i}"] for i in range(10)]
 
-        # Verifica que los datos sean correctos
-        if not row_index or not updated_data:
-            return jsonify({"message": "Invalid data"}), 400
-
-        # Actualizar en Google Sheets
-        sheet.update(f"B{row_index}:K{row_index}", [updated_data])
+        # Escribir en Google Sheets
+        sheet.update(f"B{row_index}", [updated_data])
         print(f"✅ Datos actualizados en fila {row_index}: {updated_data}")
 
-        return jsonify({"message": "Changes saved successfully!"})
     except Exception as e:
         print(f"❌ ERROR al actualizar Google Sheets en fila {row_index}: {e}")
-        return jsonify({"message": f"Error saving changes: {str(e)}"}), 500
+        return "<h2>Error al actualizar la hoja de cálculo.</h2>"
 
+    return redirect(url_for("home"))
 
 if __name__ == "__main__":
     app.run(debug=True)
