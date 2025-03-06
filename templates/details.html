@@ -33,6 +33,11 @@
         .save-button:hover {
             background-color: #218838;
         }
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
@@ -44,21 +49,20 @@
             <tr>
                 <th>Field</th>
                 <th>Value</th>
-                <th>Delivered</th>
+                <th>Status</th>
             </tr>
             {% for index, (header, value) in zipped_data %}
             <tr>
                 <td>{{ header }}</td>
                 <td>
-                    <select name="field_{{ index }}">
-                        <option value="Small" {% if value == "Small" %}selected{% endif %}>Small</option>
-                        <option value="Medium" {% if value == "Medium" %}selected{% endif %}>Medium</option>
-                        <option value="Large" {% if value == "Large" %}selected{% endif %}>Large</option>
-                        <option value="One Size" {% if value == "One Size" %}selected{% endif %}>One Size</option>
-                    </select>
+                    <input type="text" name="field_{{ index }}" value="{{ value }}">
                 </td>
                 <td>
-                    <input type="checkbox" class="delivered" {% if value == "Delivered" %}checked{% endif %}>
+                    <select name="status_{{ index }}">
+                        <option value="Delivered" {% if value == "Delivered" %}selected{% endif %}>Delivered</option>
+                        <option value="Pending" {% if value == "Pending" %}selected{% endif %}>Pending</option>
+                        <option value="Out of Stock" {% if value == "Out of Stock" %}selected{% endif %}>Out of Stock</option>
+                    </select>
                 </td>
             </tr>
             {% endfor %}
@@ -80,11 +84,18 @@
             </tr>
             <tr>
                 <th>Total Deduction</th>
-                <th>$60</th>
+                <th id="totalDeduction">$60</th>
             </tr>
         </table>
 
         <h3>Total Delivered Items: <span id="totalDelivered">0</span></h3>
+
+        <label class="checkbox-label">
+            <input type="checkbox" id="oldEmployer" onclick="updateTotalDeduction()">
+            Old Employer (Reduce total debt)
+        </label>
+
+        <h3>Final Amount Owed: <span id="finalAmount">$60</span></h3>
 
         <button type="button" class="save-button" onclick="saveChanges()">Save</button>
     </form>
@@ -92,12 +103,23 @@
     <script>
         function countDelivered() {
             let count = 0;
-            document.querySelectorAll('.delivered').forEach(checkbox => {
-                if (checkbox.checked) {
+            document.querySelectorAll('select').forEach(select => {
+                if (select.value === "Delivered") {
                     count++;
                 }
             });
             document.getElementById('totalDelivered').textContent = count;
+        }
+
+        function updateTotalDeduction() {
+            let baseDeduction = 60;
+            let finalAmount = document.getElementById('finalAmount');
+
+            if (document.getElementById('oldEmployer').checked) {
+                finalAmount.textContent = "$" + (baseDeduction - 20);
+            } else {
+                finalAmount.textContent = "$" + baseDeduction;
+            }
         }
 
         function saveChanges() {
@@ -112,9 +134,13 @@
             .catch(error => alert("Error saving data: " + error));
         }
 
-        document.addEventListener("DOMContentLoaded", countDelivered);
-        document.querySelectorAll('.delivered').forEach(checkbox => {
-            checkbox.addEventListener("change", countDelivered);
+        document.addEventListener("DOMContentLoaded", () => {
+            countDelivered();
+            updateTotalDeduction();
+        });
+
+        document.querySelectorAll('select').forEach(select => {
+            select.addEventListener("change", countDelivered);
         });
     </script>
 
