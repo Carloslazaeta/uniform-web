@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guardar Proyecto</title>
+    <script>
+        function saveSelection() {
+            let option = document.getElementById("save-option").value;
+            fetch("/save", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ option: option })
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message || data.error);
+            });
+        }
+    </script>
+</head>
+<body>
+    <h2>Guardar Proyecto</h2>
+    <label for="save-option">Guardar Proyecto:</label>
+    <select id="save-option">
+        <option value="Sí" {% if saved_option == "Sí" %}selected{% endif %}>Sí</option>
+        <option value="No" {% if saved_option == "No" %}selected{% endif %}>No</option>
+    </select>
+    <button onclick="saveSelection()">Guardar</button>
+</body>
+</html>
